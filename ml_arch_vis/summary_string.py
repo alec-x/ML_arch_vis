@@ -11,8 +11,6 @@ def summary_string(model, input_size, batch_size=-1, device=torch.device('cuda:0
     if dtypes == None:
         dtypes = [torch.FloatTensor]*len(input_size)
 
-    summary_str = ''
-
     def register_hook(module):
         def hook(module, input, output):
             class_name = str(module.__class__).split(".")[-1].split("'")[0]
@@ -67,28 +65,15 @@ def summary_string(model, input_size, batch_size=-1, device=torch.device('cuda:0
     for h in hooks:
         h.remove()
 
-    summary_str += "----------------------------------------------------------------" + "\n"
-    line_new = "{:>20}  {:>25} {:>15}".format(
-        "Layer (type)", "Output Shape", "Param #")
-    summary_str += line_new + "\n"
-    summary_str += "================================================================" + "\n"
     total_params = 0
     total_output = 0
     trainable_params = 0
     for layer in summary:
-        # input_shape, output_shape, trainable, nb_params
-        line_new = "{:>20}  {:>25} {:>15}".format(
-            layer,
-            str(summary[layer]["output_shape"]),
-            "{0:,}".format(summary[layer]["nb_params"]),
-        )
         total_params += summary[layer]["nb_params"]
-
         total_output += np.prod(summary[layer]["output_shape"])
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
                 trainable_params += summary[layer]["nb_params"]
-        summary_str += line_new + "\n"
 
     # assume 4 bytes/number (float on cuda).
     total_input_size = abs(np.prod(sum(input_size, ()))
@@ -97,17 +82,14 @@ def summary_string(model, input_size, batch_size=-1, device=torch.device('cuda:0
                             (1024 ** 2.))  # x2 for gradients
     total_params_size = abs(total_params * 4. / (1024 ** 2.))
     total_size = total_params_size + total_output_size + total_input_size
+    meta_summary = {}
+    meta_summary["total"] = total_params
+    meta_summary["trainable"] = trainable_params
+    meta_summary["nontrainable"] = total_params - trainable_params
+    meta_summary["input_size_mb"] = total_input_size
+    meta_summary["forward_backward_size_mb"] = total_output_size
+    meta_summary["params_size_mb"] = total_params_size
+    meta_summary["total_size_mb"] = total_size
 
-    summary_str += "================================================================" + "\n"
-    summary_str += "Total params: {0:,}".format(total_params) + "\n"
-    summary_str += "Trainable params: {0:,}".format(trainable_params) + "\n"
-    summary_str += "Non-trainable params: {0:,}".format(total_params -
-                                                        trainable_params) + "\n"
-    summary_str += "----------------------------------------------------------------" + "\n"
-    summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"
-    summary_str += "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
-    summary_str += "Params size (MB): %0.2f" % total_params_size + "\n"
-    summary_str += "Estimated Total Size (MB): %0.2f" % total_size + "\n"
-    summary_str += "----------------------------------------------------------------" + "\n"
     # return summary
-    return summary_str, (total_params, trainable_params)
+    return summary, meta_summary
