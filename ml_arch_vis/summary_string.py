@@ -1,4 +1,4 @@
-# derived from https://github.com/sksq96/pytorch-summary
+# Modified from https://github.com/sksq96/pytorch-summary
  
 import torch
 import torch.nn as nn
